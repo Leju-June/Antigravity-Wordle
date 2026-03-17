@@ -2,9 +2,9 @@ import reflex as rx
 from .state import State
 
 color_map = {
-    "correct": "var(--green-9)",
-    "present": "var(--amber-9)",
-    "absent": "var(--slate-8)",
+    "correct": "#0ea5e9",  # Sky Blue
+    "present": "#d4af37",  # Gold
+    "absent": "#e5e7eb",   # Light Gray
     "empty": "transparent",
     "typing": "transparent"
 }
@@ -20,54 +20,27 @@ border_map = {
 font_color_map = {
     "correct": "white",
     "present": "white",
-    "absent": "white",
-    "empty": "var(--slate-12)",
-    "typing": "var(--slate-12)"
+    "absent": "var(--slate-12)",
+    "typing": "var(--slate-12)",
+    "empty": "var(--slate-12)"
 }
 
 def cell(item: dict) -> rx.Component:
     """A single cell in the grid."""
     letter = item["letter"]
-    status = item["status"]
     
-    bg_color = rx.match(
-        status,
-        ("correct", color_map["correct"]),
-        ("present", color_map["present"]),
-        ("absent", color_map["absent"]),
-        ("typing", color_map["typing"]),
-        color_map["empty"]
-    )
-    
-    border = rx.match(
-        status,
-        ("correct", border_map["correct"]),
-        ("present", border_map["present"]),
-        ("absent", border_map["absent"]),
-        ("typing", border_map["typing"]),
-        border_map["empty"]
-    )
-    
-    text_color = rx.match(
-        status,
-        ("correct", font_color_map["correct"]),
-        ("present", font_color_map["present"]),
-        ("absent", font_color_map["absent"]),
-        font_color_map["typing"]
-    )
-
     return rx.flex(
-        rx.text(letter, size="8", weight="bold", color=text_color),
+        rx.text(letter, size="8", weight="bold", color=item["font_color"]),
         align="center",
         justify="center",
         width=["48px", "62px"],
         height=["48px", "62px"],
-        border=border,
-        bg=bg_color,
+        border=border_map.get(item["status"], border_map["empty"]),
+        bg=item["color"],
         border_radius="md",
         transition="all 0.4s ease-in-out",
         # Adding some pop animation if it's currently typed
-        transform=rx.cond(status == "typing", "scale(1.05)", "scale(1)"),
+        transform=rx.cond(item["status"] == "typing", "scale(1.05)", "scale(1)"),
     )
 
 def row(row_data: list[dict]) -> rx.Component:
@@ -85,19 +58,15 @@ def grid() -> rx.Component:
     )
 
 def keyboard_key(key: str, flex: str = "1") -> rx.Component:
-    bg_color = rx.match(
-        State.letter_statuses.get(key, "empty"),
-        ("correct", color_map["correct"]),
-        ("present", color_map["present"]),
-        ("absent", color_map["absent"]),
-        "var(--slate-4)"
-    )
-    text_color = rx.match(
-        State.letter_statuses.get(key, "empty"),
-        ("correct", font_color_map["correct"]),
-        ("present", font_color_map["present"]),
-        ("absent", font_color_map["absent"]),
-        "var(--slate-12)"
+    bg_color = State.letter_colors.get(key, "var(--slate-4)")
+    text_color = rx.cond(
+        State.letter_statuses.get(key) == "absent",
+        "var(--slate-12)",
+        rx.cond(
+            State.letter_statuses.get(key) == "empty",
+            "var(--slate-12)",
+            "white"
+        )
     )
     
     return rx.button(
@@ -162,7 +131,7 @@ def result_modal() -> rx.Component:
                                     rx.icon("copy"),
                                     "Share", 
                                     on_click=rx.set_clipboard(State.share_text),
-                                    color_scheme="green"
+                                    color_scheme="sky"
                                 ),
                                 rx.button(
                                     rx.icon("rotate-cw"),

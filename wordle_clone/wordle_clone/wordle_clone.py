@@ -7,47 +7,43 @@ from .components import grid, keyboard, result_modal
 style = {
     "font_family": "Inter, sans-serif",
     ":root": {
-        "--slate-4": "#f1f5f9",
-        "--slate-6": "#cbd5e1",
-        "--slate-8": "#94a3b8",
+        "--slate-4": "#f8fafc",
+        "--slate-6": "#e2e8f0",
+        "--light-gray": "#e5e7eb",
+        "--slate-8": "#e5e7eb",
         "--slate-12": "#0f172a",
-        "--green-9": "#22c55e",
-        "--amber-9": "#eab308",
+        "--sky-blue": "#0ea5e9",
+        "--gold": "#d4af37",
     }
 }
-
-class GlobalKeyListener(rx.Fragment):
-    """Component to catch global keydowns."""
-
-    def add_imports(self) -> dict[str, str | list[str]]:
-        return {"react": ["useEffect"]}
-
-    def _get_hooks(self) -> str:
-        return f"""
-        useEffect(() => {{
-            const handleKeyDown = (e) => {{
-                // Ignore keydowns if modifier keys are pressed
-                if (e.ctrlKey || e.metaKey || e.altKey) return;
-                
-                // Allow only certain keys
-                if (e.key === "Enter" || e.key === "Backspace" || e.key === "Escape" || (e.key.length === 1 && e.key.match(/[a-zA-Z]/i))) {{
-                    {rx.utils.format.format_event(State.handle_key_down(rx.Var("e.key")))}
-                }}
-            }};
-            window.addEventListener('keydown', handleKeyDown);
-            return () => window.removeEventListener('keydown', handleKeyDown);
-        }}, []);
-        """
-
-def global_key_listener() -> rx.Component:
-    return GlobalKeyListener.create()
 
 def index() -> rx.Component:
     return rx.center(
         # Hook global key listener to the page
-        global_key_listener(),
+        rx.script("""
+            window.addEventListener('keydown', function(e) {
+                // Ignore keydowns if modifier keys are pressed
+                if (e.ctrlKey || e.metaKey || e.altKey) return;
+                
+                // Allow only certain keys
+                if (e.key === "Enter" || e.key === "Backspace" || e.key === "Escape" || (e.key.length === 1 && e.key.match(/[a-zA-Z]/i))) {
+                    var input = document.getElementById('hidden_trigger');
+                    if (input) {
+                        let setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+                        // Append timestamp so consecutive repeated keys still trigger on_change!
+                        setter.call(input, e.key + "_" + Date.now());
+                        input.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                }
+            });
+        """),
+        rx.input(
+            id="hidden_trigger",
+            style={"display": "none"},
+            on_change=State.handle_key_down,
+        ),
         rx.vstack(
-            rx.heading("Wordle Clone", size="8", weight="bold", margin_y="4"),
+            rx.heading(f"Wordle Clone (Answer: {State.answer})", size="8", weight="bold", margin_y="4"),
             rx.divider(),
             rx.spacer(),
             # Grid

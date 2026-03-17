@@ -16,6 +16,7 @@ class State(rx.State):
     def _initialize(self):
         if not self.answer:
             self.answer = random.choice(ANSWERS)
+            print(f"DEBUG: Current Wordle Answer is -> {self.answer}")
             
     def on_load(self):
         self._initialize()
@@ -35,7 +36,10 @@ class State(rx.State):
     def close_message(self, _=None):
         self.message_open = False
 
-    def handle_key_down(self, key: str):
+    def handle_key_down(self, key_payload: str):
+        # Strip timestamp that JS frontend attaches to bypass React state blocking
+        key = key_payload.split("_")[0] if "_" in key_payload else key_payload
+        
         if self.message_open and key == "Escape":
             self.message_open = False
             return
@@ -92,7 +96,7 @@ class State(rx.State):
             colors = ["⬜"] * 5
             for i, char in enumerate(guess):
                 if char == self.answer[i]:
-                    colors[i] = "🟩"
+                    colors[i] = "🟦"
                     answer_letters[i] = None
             for i, char in enumerate(guess):
                 if colors[i] == "⬜" and char in answer_letters:
@@ -123,6 +127,19 @@ class State(rx.State):
         return status_map
 
     @rx.var
+    def letter_colors(self) -> dict[str, str]:
+        statuses = self.letter_statuses
+        colors = {}
+        for char, status in statuses.items():
+            if status == "correct":
+                colors[char] = "#0ea5e9"
+            elif status == "present":
+                colors[char] = "#d4af37"
+            else:
+                colors[char] = "#e5e7eb"
+        return colors
+
+    @rx.var
     def grid(self) -> list[list[dict[str, str]]]:
         if not self.answer: return []
         grid_data = []
@@ -138,21 +155,25 @@ class State(rx.State):
                 if statuses[i] == "absent" and char in answer_letters:
                     statuses[i] = "present"
                     answer_letters[answer_letters.index(char)] = None
+            
             for i, char in enumerate(guess):
-                row.append({"letter": char, "status": statuses[i]})
+                color = "#e5e7eb" # absent
+                if statuses[i] == "correct": color = "#0ea5e9"
+                elif statuses[i] == "present": color = "#d4af37"
+                row.append({"letter": char, "status": statuses[i], "color": color, "font_color": "white" if statuses[i] != "absent" else "#0f172a"})
             grid_data.append(row)
             
         if len(self.guesses) < 6 and not self.game_over:
             current_row = []
             for i in range(5):
                 if i < len(self.current_guess):
-                    current_row.append({"letter": self.current_guess[i], "status": "typing"})
+                    current_row.append({"letter": self.current_guess[i], "status": "typing", "color": "transparent", "font_color": "#0f172a"})
                 else:
-                    current_row.append({"letter": "", "status": "empty"})
+                    current_row.append({"letter": "", "status": "empty", "color": "transparent", "font_color": "#0f172a"})
             grid_data.append(current_row)
             
         while len(grid_data) < 6:
-            empty_row = [{"letter": "", "status": "empty"} for _ in range(5)]
+            empty_row = [{"letter": "", "status": "empty", "color": "transparent", "font_color": "#0f172a"} for _ in range(5)]
             grid_data.append(empty_row)
             
         return grid_data

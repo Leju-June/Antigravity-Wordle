@@ -5,8 +5,8 @@ ANSWERS = []
 
 try:
     # Use a small common set of valid words to ensure it runs fast and reliably without external deps failure
-    url = "https://raw.githubusercontent.com/tabatkins/wordle-list/main/words"
     req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+    url = "https://raw.githubusercontent.com/tabatkins/wordle-list/main/words"
     content = urllib.request.urlopen(req, timeout=5).read().decode('utf-8')
     all_words = [w.strip().upper() for w in content.split('\n') if len(w.strip()) == 5]
     if all_words:
